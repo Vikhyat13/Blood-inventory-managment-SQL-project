@@ -1,9 +1,5 @@
-<?php
-$active = 'hospital';
-include('head.php'); // Include the head section
-?>
-<!DOCTYPE html>
-<html lang="en">
+<?php include 'session.php'; ?>
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,6 +8,10 @@ include('head.php'); // Include the head section
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
   <style>
+    #sidebar {
+      position: relative;
+      margin-top: -20px;
+    }
     #content {
       position: relative;
       margin-left: 210px;
@@ -23,64 +23,126 @@ include('head.php'); // Include the head section
         margin-right: auto;
       }
     }
+    #he {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 3px;
+      text-align: center;
+    }
     .btn-action {
       margin: 2px;
     }
   </style>
 </head>
 <body style="color:black">
+<div id="header">
+  <?php include 'header.php'; ?>
+</div>
+<div id="sidebar">
+  <?php $active = "hospital"; include 'sidebar.php'; ?>
+</div>
 <div id="content">
   <div class="content-wrapper">
     <div class="container-fluid">
       <div class="row">
         <div class="col-md-12 lg-12 sm-12">
-          <h1 class="page-title">List of Hospitals</h1>
+          <h1 class="page-title">Hospital List</h1>
         </div>
       </div>
       <hr>
+      <?php
+      include 'conn.php';
+
+      $limit = 10; // Number of records per page
+      if (isset($_GET['page'])) {
+        $page = $_GET['page'];
+      } else {
+        $page = 1;
+      }
+      $offset = ($page - 1) * $limit;
+      $count = $offset + 1;
+
+      // Fetch hospital details
+      $sql = "SELECT HospitalID, Name, Location, BloodBankID FROM Hospital LIMIT {$offset}, {$limit}";
+      $result = mysqli_query($conn, $sql);
+
+      if (mysqli_num_rows($result) > 0) {
+      ?>
       <div class="table-responsive">
-        <table class="table table-bordered table-striped table-hover">
-          <thead class="thead-dark">
-            <tr>
-              <?php
-              include 'conn.php';
-
-              // Fetch column names from the Hospital table
-              $sql_columns = "SHOW COLUMNS FROM Hospital";
-              $result_columns = mysqli_query($conn, $sql_columns);
-
-              if (mysqli_num_rows($result_columns) > 0) {
-                  while ($column = mysqli_fetch_assoc($result_columns)) {
-                      echo '<th scope="col">' . htmlspecialchars(ucwords(str_replace('_', ' ', $column['Field']))) . '</th>';
-                  }
-              }
-              ?>
-            </tr>
+        <table class="table table-bordered" style="text-align:center">
+          <thead style="text-align:center">
+            <th style="text-align:center">S.no</th>
+            <th style="text-align:center">Hospital Name</th>
+            <th style="text-align:center">Location</th>
+            <th style="text-align:center">Blood Bank ID</th>
+            <th style="text-align:center">Action</th>
           </thead>
           <tbody>
             <?php
-            // Fetch all rows from the Hospital table
-            $sql = "SELECT * FROM Hospital";
-            $result = mysqli_query($conn, $sql);
-
-            if (mysqli_num_rows($result) > 0) {
-                while ($row = mysqli_fetch_assoc($result)) {
-                    echo '<tr>';
-                    foreach ($row as $value) {
-                        echo '<td>' . htmlspecialchars($value) . '</td>';
-                    }
-                    echo '</tr>';
-                }
-            } else {
-                // Display a message if no rows are found
-                echo '<tr><td colspan="' . mysqli_num_fields($result_columns) . '" class="text-center">No hospitals found.</td></tr>';
-            }
-            ?>
+            while ($row = mysqli_fetch_assoc($result)) { ?>
+              <tr>
+                <td><?php echo $count++; ?></td>
+                <td><?php echo isset($row['Name']) ? htmlspecialchars($row['Name']) : 'N/A'; ?></td>
+                <td><?php echo isset($row['Location']) ? htmlspecialchars($row['Location']) : 'N/A'; ?></td>
+                <td><?php echo isset($row['BloodBankID']) ? htmlspecialchars($row['BloodBankID']) : 'N/A'; ?></td>
+                <td style="width:150px">
+                  <a href='edit_hospital.php?id=<?php echo $row['HospitalID']; ?>' class="btn btn-primary btn-action">Edit</a>
+                  <a href='delete_hospital.php?id=<?php echo $row['HospitalID']; ?>' class="btn btn-danger btn-action">Delete</a>
+                </td>
+              </tr>
+            <?php } ?>
           </tbody>
         </table>
+      </div>
+      <?php } else { ?>
+        <div class="alert alert-info text-center">No hospitals found.</div>
+      <?php } ?>
+      <!-- Pagination -->
+      <div class="table-responsive" style="text-align:center;">
+        <?php
+        // Count total hospitals for pagination
+        $sql1 = "SELECT * FROM Hospital";
+        $result1 = mysqli_query($conn, $sql1) or die("Query Failed.");
+        if (mysqli_num_rows($result1) > 0) {
+          $total_records = mysqli_num_rows($result1);
+          $total_page = ceil($total_records / $limit);
+          echo '<ul class="pagination admin-pagination">';
+          if ($page > 1) {
+            echo '<li><a href="hospital_list.php?page=' . ($page - 1) . '">Prev</a></li>';
+          }
+          for ($i = 1; $i <= $total_page; $i++) {
+            if ($i == $page) {
+              $active = "active";
+            } else {
+              $active = "";
+            }
+            echo '<li class="' . $active . '"><a href="hospital_list.php?page=' . $i . '">' . $i . '</a></li>';
+          }
+          if ($total_page > $page) {
+            echo '<li><a href="hospital_list.php?page=' . ($page + 1) . '">Next</a></li>';
+          }
+          echo '</ul>';
+        }
+        ?>
       </div>
     </div>
   </div>
 </div>
+<?php
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] != true) {
+  echo '<div class="alert alert-danger"><b>Please Login First To Access Admin Portal.</b></div>';
+?>
+<form method="post" action="login.php" class="form-horizontal">
+  <div class="form-group">
+    <div class="col-sm-8 col-sm-offset-4" style="float:left">
+      <button class="btn btn-primary" name="submit" type="submit">Go to Login Page</button>
+    </div>
+  </div>
+</form>
+<?php } ?>
 </body>
 </html>
